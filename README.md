@@ -21,3 +21,4 @@ The following educational resources are used to accomplish the project:
 https://cmsc426.github.io/sfm/
 
 ## Results
+The project currently doesn't produce any visual results
