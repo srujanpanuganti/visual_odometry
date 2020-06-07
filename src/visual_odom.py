@@ -148,7 +148,7 @@ def RANSAC(all_matches):
     return inliers,s
 
     # return inliers
-    pass
+    # pass
 
 
 
@@ -235,10 +235,43 @@ def linear_LS_triangulation(u1, P1, u2, P2):
     return x.T, np.ones(len(u1), dtype=bool)
 
 
-if __name__ == '__main__':
-    value = 'stereo/centre'
 
-    fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('./model')
+def vizMatches(image1, image2, pixelsImg1, pixelsImg2, idx):
+    '''
+    Visualize the feature match between pair of images
+    :param image1:
+    :param image2:
+    :param pixelsImg1:
+    :param pixelsImg2:
+    :return:
+    '''
+    # visualization of the matches
+    h1, w1 = image1.shape[:2]
+    h2, w2 = image2.shape[:2]
+    view = np.zeros((max(h1, h2), w1 + w2, 3), np.uint8)
+    view[:h1, :w1, :] = image1
+    view[:h2, w1:, :] = image2
+    view[:, :, 1] = view[:, :, 0]
+    view[:, :, 2] = view[:, :, 0]
+
+    for ind in range(len(pixelsImg1)):
+        # draw the keypoints
+        color = tuple([np.random.randint(0, 255) for _ in range(3)])
+        cv2.line(view, (int(pixelsImg1[ind][0]), int(pixelsImg1[ind][1])),
+                 (int(pixelsImg2[ind][0] + w1), int(pixelsImg2[ind][1])), color)
+
+    cv2.imwrite("matches/view" + str(idx) +".jpg", view)
+    # cv2.waitKey(0)
+
+
+
+if __name__ == '__main__':
+    value = '/home/srujan/PycharmProjects/visual_odometry/stereo/centre'
+
+    # fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('./model')
+    fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('/home/srujan/PycharmProjects/visual_odometry/model')
+
+
     # calibration matrix
     k= np.array([[fx,0,cx],
                 [0,fy,cy],
@@ -246,7 +279,9 @@ if __name__ == '__main__':
 
     image_list = []
 
-    filenames = [img for img in glob.glob("stereo/centre/*.png")]
+    filenames = [img for img in glob.glob("/home/srujan/PycharmProjects/visual_odometry/stereo/centre/*.png")]
+    # filenames = [img for img in glob.glob("/home/srujan/PycharmProjects/visual_odometry/samples/*.png")]
+
     filenames.sort()
     for img in filenames:
         image_list.append(img)
@@ -261,8 +296,8 @@ if __name__ == '__main__':
 
     max_len = 1000
 
-    for q in range(25,len(image_list)-1):
-    # for q in range(25,max_len):
+    # for q in range(25,len(image_list)-1):
+    for q in range(25,100):
 
 
         print('frame count before entering ',frame_count)
@@ -300,6 +335,9 @@ if __name__ == '__main__':
 
         img1_inliers = np.vstack((S_array[:,:,0][:,0], S_array[:,:,1][:,0])).T
         img2_inliers = np.vstack((S_array[:,:,0][:,1], S_array[:,:,1][:,1])).T
+
+        vizMatches(undistorted_image1,undistorted_image2,img1_inliers,img2_inliers,q)
+
 
         ## Estimate Essential matrix
         rand_points=random.sample(range(0,len(img1_inliers)),8)
