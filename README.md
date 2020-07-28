@@ -1,5 +1,5 @@
 ## Project - Visual Odometry
-This project is an implementation of Visual SLAM - an SFM Approach
+This project is an implementation of Visual Odometry - Classical Approach
 
 <p align="center">
 <img src="images/visual_odom.gif" alt="visual_odom" width="480">
