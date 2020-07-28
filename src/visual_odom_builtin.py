@@ -109,58 +109,11 @@ def estimate_fundamental_matrix(x_i, x_i_dash):
     ## Corrected F
     F_tilde = np.matmul(u_, np.matmul(s_corrected, vh_))
 
+    # F_tilde = F_tilde/F_tilde[2,2] ## remove this
+
+
     return F_tilde
 
-
-def estimate_Norm_fundamental_matrix(x_i, x_i_dash):
-    '''
-    generate the fundamental matrix from correspondences
-    :param x_i, x_i_dash: correspondences from image1 and image2
-    :return: f_matrix : estimated fundamental matrix
-    '''
-
-
-
-    points1 = np.asarray(x_i)
-    points2 = np.asarray(x_i_dash)
-
-    x_i = np.asarray(x_i)
-    x_i_dash = np.asarray(x_i_dash)
-
-    dist1 = np.sqrt((points1[:,0]- np.mean(points1[:,0]))**2 + (points1[:,1]- np.mean(points1[:,1]))**2)
-    dist2 = np.sqrt((points2[:,0]- np.mean(points2[:,0]))**2 + (points2[:,1]- np.mean(points2[:,1]))**2)
-
-    m_dist1 = np.mean(dist1)
-    m_dist2 = np.mean(dist2)
-
-    scale1 = np.sqrt(2)/m_dist1
-    scale2 = np.sqrt(2)/m_dist2
-
-    x_i[:,0] = (points1[:,0] - np.mean(points1[:,0]))*scale1
-    x_i[:,1] = (points1[:,1] - np.mean(points1[:,1]))*scale1
-    x_i_dash[:,0] = (points2[:,0] - np.mean(points2[:,0]))*scale2
-    x_i_dash[:,1] = (points2[:,1] - np.mean(points2[:,1]))*scale2
-
-    A=[]
-    for j in range(len(x_i)):
-        r =np.array([x_i[j][0]*x_i_dash[j][0], x_i[j][0]*x_i_dash[j][1], x_i[j][0], x_i[j][1]*x_i_dash[j][0], x_i[j][1]*x_i_dash[j][1], x_i[j][1], x_i_dash[j][0], x_i_dash[j][1],1])
-        A.append(r)
-    A =np.asarray(A)
-
-    ## Obtaining F Estimate
-    u, s, vh = np.linalg.svd(A)
-    F_est = vh[:,vh.shape[0]-1]
-    F_est=np.reshape(F_est,(3,3)).T
-
-    ## Correcting the F_estimate
-    u_,s_,vh_ = np.linalg.svd(F_est)
-    s_[s_.shape[0]-1] = 0
-    s_corrected = np.diag(s_)
-
-    ## Corrected F
-    F_tilde = np.matmul(u_, np.matmul(s_corrected, vh_))
-
-    return F_tilde
 
 def RANSAC(all_matches):
     '''
@@ -175,13 +128,19 @@ def RANSAC(all_matches):
     b = 0
     outliers=[]
     s=[]
+    # F_tilde
 
     for i in range(0,m-1):
         rand_points=random.sample(range(0,len(all_matches[0])),8)
         x_i = list(itemgetter(*rand_points)(all_matches[0]))
         x_i_dash = list(itemgetter(*rand_points)(all_matches[1]))
         F_tilde = estimate_fundamental_matrix(x_i, x_i_dash)
-        # F_tilde = estimate_Norm_fundamental_matrix(x_i, x_i_dash)
+
+
+        # x_i = np.asarray(list(itemgetter(*rand_points)(all_matches[0])))
+        # x_i_dash = np.asarray(list(itemgetter(*rand_points)(all_matches[1])))
+        # F_tilde = NormalizedFMatrix(x_i, x_i_dash)
+
 
         for j in range(0,n):
             if abs(np.matmul(np.transpose(x_i_dash[j]),np.matmul(F_tilde,x_i[j])))<Epsilon:
@@ -196,7 +155,14 @@ def RANSAC(all_matches):
             b = len(s)
             inliers = s
 
+    print(F_tilde)
+
     return inliers,s
+
+    # return inliers
+    # pass
+
+
 
 def obtain_essential_matrix(f_matrix, calibration_matrix):
     '''
@@ -207,7 +173,13 @@ def obtain_essential_matrix(f_matrix, calibration_matrix):
     '''
 
     essential_matrix = np.matmul(np.transpose(calibration_matrix),np.matmul(f_matrix,calibration_matrix))
+
+    # essential_matrix = essential_matrix/np.linalg.norm(essential_matrix)
+
     return essential_matrix
+
+
+
 
 def linear_LS_triangulation(u1, P1, u2, P2):
 
@@ -277,6 +249,8 @@ def linear_LS_triangulation(u1, P1, u2, P2):
 
     return x.T, np.ones(len(u1), dtype=bool)
 
+
+
 def vizMatches(image1, image2, pixelsImg1, pixelsImg2, idx):
     '''
     Visualize the feature match between pair of images
@@ -304,10 +278,51 @@ def vizMatches(image1, image2, pixelsImg1, pixelsImg2, idx):
     cv2.imwrite("matches/view" + str(idx) +".jpg", view)
     # cv2.waitKey(0)
 
+def NormalizedFMatrix(points1,points2):
+
+    dist1 = np.sqrt((points1[:,0]- np.mean(points1[:,0]))**2 + (points1[:,1]- np.mean(points1[:,1]))**2)
+    dist2 = np.sqrt((points2[:,0]- np.mean(points2[:,0]))**2 + (points2[:,1]- np.mean(points2[:,1]))**2)
+
+    m_dist1 = np.mean(dist1)
+    m_dist2 = np.mean(dist2)
+
+    scale1 = np.sqrt(2)/m_dist1
+    scale2 = np.sqrt(2)/m_dist2
+
+    t1 = np.array([[scale1, 0, -scale1*np.mean(points1[:,0])],[0, scale1, -scale1*np.mean(points1[:,1])],[0, 0, 1]])
+    t2 = np.array([[scale2, 0, -scale2*np.mean(points2[:,0])],[0, scale2, -scale2*np.mean(points2[:,1])],[0, 0, 1]])
+
+
+    U_x = (points1[:,0] - np.mean(points1[:,0]))*scale1
+    U_y = (points1[:,1] - np.mean(points1[:,1]))*scale1
+    V_x = (points2[:,0] - np.mean(points2[:,0]))*scale2
+    V_y = (points2[:,1] - np.mean(points2[:,1]))*scale2
+
+    A = np.zeros((len(U_x),9))
+
+    for i in range(len(U_x)):
+
+        A[i] = np.array([U_x[i]*V_x[i], U_y[i]*V_x[i], V_x[i], U_x[i]*V_y[i], U_y[i]*V_y[i], V_y[i], U_x[i], U_y[i], 1])
+
+    U,S,V = np.linalg.svd(A)
+    V = V.T
+    F = V[:,-1].reshape(3,3)
+
+    Uf, Sf, Vf = np.linalg.svd(F)
+    SF = np.diag(Sf)
+    SF[2,2] = 0
+
+    F = Uf @ SF @ Vf
+    F = t2.T @ F @ t1
+    F = F/F[2,2]
+
+    return F
 
 
 if __name__ == '__main__':
     value = '/home/srujan/PycharmProjects/visual_odometry/stereo/centre'
+
+    # global F
 
     # fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('./model')
     fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('/home/srujan/PycharmProjects/visual_odometry/model')
@@ -335,12 +350,13 @@ if __name__ == '__main__':
 
     frame_count = 0
 
-    max_len = 1000
+    max_len = 250
 
     # for q in range(25,len(image_list)-1):
-    for q in range(25,50):
+    for q in range(30,max_len):
 
-        print('frame count before entering ',frame_count)
+
+        print('frame count before entering ',q)
 
         image1 = cv2.imread(image_list[q],0)
         image2 = cv2.imread(image_list[q+1],0)
@@ -369,6 +385,12 @@ if __name__ == '__main__':
         all_matches = sift_feat(undistorted_image1,undistorted_image2)
 
         ## Ransac:
+        ULA = np.delete(all_matches[0], 2, 1)
+        VLA = np.delete(all_matches[1], 2, 1)
+
+        # E_, _ = cv2.findEssentialMat(ULA, VLA, cameraMatrix=k, method=cv2.RANSAC, prob=0.999, threshold=0.5)
+        # F_tilde_ = cv2.findFundamentalMat(ULA, VLA, method=cv2.RANSAC)
+
         inliers_,S_ = RANSAC(all_matches)
 
         S_array = np.asarray(S_)
@@ -378,16 +400,22 @@ if __name__ == '__main__':
 
         # vizMatches(undistorted_image1,undistorted_image2,img1_inliers,img2_inliers,q)
 
-        ## Estimate Essential matrix
+        # Estimate Essential matrix
         rand_points=random.sample(range(0,len(img1_inliers)),8)
-        x_i = list(itemgetter(*rand_points)(img1_inliers))
-        x_i_dash = list(itemgetter(*rand_points)(img2_inliers))
-        # F_tilde = estimate_fundamental_matrix(x_i, x_i_dash)
+        # x_i = list(itemgetter(*rand_points)(img1_inliers))
+        # x_i_dash = list(itemgetter(*rand_points)(img2_inliers))
 
-        F_tilde = estimate_Norm_fundamental_matrix(x_i, x_i_dash)
+        x_i = np.asarray(list(itemgetter(*rand_points)(img1_inliers)))
+        x_i_dash = np.asarray(list(itemgetter(*rand_points)(img2_inliers)))
 
-        E = obtain_essential_matrix(F_tilde, k)
+        # F_tilde_ = NormalizedFMatrix(x_i, x_i_dash)
 
+        F_tilde_ = estimate_fundamental_matrix(x_i, x_i_dash)
+
+        print("F_tile", F_tilde_)
+
+        E = obtain_essential_matrix(F_tilde_, k)
+        #
         U,D,Vh = np.linalg.svd(E)
         W=np.array([[0,-1,0],[1,0,0],[0,0,1]])
 
@@ -410,33 +438,39 @@ if __name__ == '__main__':
         correct_poses = []
 
         prev = 0
-        for R,C in zip(R_list, C_list):
+        # for R,C in zip(R_list, C_list):
+        #
+        #
+        #     values = []
+        #     positive = 0
+        #
+        #     P1 = np.eye(3,4)
+        #     P2 = np.hstack((R,np.reshape((C.T), (3,1))))
+        #
+        #     x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
+        #
+        #     for i in range(0,len(img1_inliers)):
+        #
+        #         value = np.dot(np.reshape(R[:,2], (1,3)), (x_pts - C)[i])
+        #         # values.append(value)
+        #
+        #         if value >0:
+        #             positive+=1
+        # #     print('number of positives', positive)
+        # #     print('R', R)
+        # #     print('C', C)
+        #
+        #     if positive > prev:
+        #         correct_poses = [R,C]
+        #         prev = positive
+        #
+        _, cur_R, cur_t, mask = cv2.recoverPose(E, ULA, VLA, cameraMatrix=k)
 
+        if np.linalg.det(cur_R)<0:
+            cur_R = -cur_R
+            cur_t = -cur_t
 
-            values = []
-            positive = 0
-
-            P1 = np.eye(3,4)
-            P2 = np.hstack((R,np.reshape((C.T), (3,1))))
-
-            # x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
-            # x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
-            x_pts , ones_ = linear_LS_triangulation(all_matches[0][:,[0,1]], P1, all_matches[1][:,[0,1]], P2)
-
-            for i in range(0,len(img1_inliers)):
-
-                value = np.dot(np.reshape(R[:,2], (1,3)), (x_pts - C)[i])
-                # values.append(value)
-
-                if value >0:
-                    positive+=1
-        #     print('number of positives', positive)
-        #     print('R', R)
-        #     print('C', C)
-
-            if positive > prev:
-                correct_poses = [R,C]
-                prev = positive
+        correct_poses = [cur_R,cur_t]
 
         Obtained_homogeneous_matrix = np.eye(4,4)
         Obtained_homogeneous_matrix[0:3, 0:3] = correct_poses[0]
@@ -455,11 +489,11 @@ if __name__ == '__main__':
         # Trajectories.append([[x_old, y_old, z_old],[x_new, y_new, z_new]])
         Trajectories.append([x_old, y_old, z_old,x_new, y_new, z_new])
 
-        frame_count+=1
+        q+=1
 
-        print('frame count after exiting ',frame_count)
+        print('frame count after exiting ',q)
 
-    np.save('trajectories3.npy', Trajectories)
+    # np.save('trajectories_builtin_edited.npy', Trajectories)
 
 
 

@@ -34,8 +34,11 @@ def ReadCameraModel(models_dir):
 # Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 #
 ################################################################################
-    intrinsics_path = models_dir + "/stereo_narrow_left.txt"
-    lut_path = models_dir + "/stereo_narrow_left_distortion_lut.bin"
+    # intrinsics_path = models_dir + "/stereo_narrow_left.txt"
+    # lut_path = models_dir + "/stereo_narrow_left_distortion_lut.bin"
+
+    intrinsics_path = models_dir + "/stereo_narrow_right.txt"
+    lut_path = models_dir + "/stereo_narrow_right_distortion_lut.bin"
 
     intrinsics = np.loadtxt(intrinsics_path)
     # Intrinsics

@@ -112,56 +112,6 @@ def estimate_fundamental_matrix(x_i, x_i_dash):
     return F_tilde
 
 
-def estimate_Norm_fundamental_matrix(x_i, x_i_dash):
-    '''
-    generate the fundamental matrix from correspondences
-    :param x_i, x_i_dash: correspondences from image1 and image2
-    :return: f_matrix : estimated fundamental matrix
-    '''
-
-
-
-    points1 = np.asarray(x_i)
-    points2 = np.asarray(x_i_dash)
-
-    x_i = np.asarray(x_i)
-    x_i_dash = np.asarray(x_i_dash)
-
-    dist1 = np.sqrt((points1[:,0]- np.mean(points1[:,0]))**2 + (points1[:,1]- np.mean(points1[:,1]))**2)
-    dist2 = np.sqrt((points2[:,0]- np.mean(points2[:,0]))**2 + (points2[:,1]- np.mean(points2[:,1]))**2)
-
-    m_dist1 = np.mean(dist1)
-    m_dist2 = np.mean(dist2)
-
-    scale1 = np.sqrt(2)/m_dist1
-    scale2 = np.sqrt(2)/m_dist2
-
-    x_i[:,0] = (points1[:,0] - np.mean(points1[:,0]))*scale1
-    x_i[:,1] = (points1[:,1] - np.mean(points1[:,1]))*scale1
-    x_i_dash[:,0] = (points2[:,0] - np.mean(points2[:,0]))*scale2
-    x_i_dash[:,1] = (points2[:,1] - np.mean(points2[:,1]))*scale2
-
-    A=[]
-    for j in range(len(x_i)):
-        r =np.array([x_i[j][0]*x_i_dash[j][0], x_i[j][0]*x_i_dash[j][1], x_i[j][0], x_i[j][1]*x_i_dash[j][0], x_i[j][1]*x_i_dash[j][1], x_i[j][1], x_i_dash[j][0], x_i_dash[j][1],1])
-        A.append(r)
-    A =np.asarray(A)
-
-    ## Obtaining F Estimate
-    u, s, vh = np.linalg.svd(A)
-    F_est = vh[:,vh.shape[0]-1]
-    F_est=np.reshape(F_est,(3,3)).T
-
-    ## Correcting the F_estimate
-    u_,s_,vh_ = np.linalg.svd(F_est)
-    s_[s_.shape[0]-1] = 0
-    s_corrected = np.diag(s_)
-
-    ## Corrected F
-    F_tilde = np.matmul(u_, np.matmul(s_corrected, vh_))
-
-    return F_tilde
-
 def RANSAC(all_matches):
     '''
     take all the matches and give out the best matches after rejecting outliers
@@ -181,7 +131,6 @@ def RANSAC(all_matches):
         x_i = list(itemgetter(*rand_points)(all_matches[0]))
         x_i_dash = list(itemgetter(*rand_points)(all_matches[1]))
         F_tilde = estimate_fundamental_matrix(x_i, x_i_dash)
-        # F_tilde = estimate_Norm_fundamental_matrix(x_i, x_i_dash)
 
         for j in range(0,n):
             if abs(np.matmul(np.transpose(x_i_dash[j]),np.matmul(F_tilde,x_i[j])))<Epsilon:
@@ -198,6 +147,11 @@ def RANSAC(all_matches):
 
     return inliers,s
 
+    # return inliers
+    # pass
+
+
+
 def obtain_essential_matrix(f_matrix, calibration_matrix):
     '''
     generate the essential matrix from fundamental matrix
@@ -208,6 +162,9 @@ def obtain_essential_matrix(f_matrix, calibration_matrix):
 
     essential_matrix = np.matmul(np.transpose(calibration_matrix),np.matmul(f_matrix,calibration_matrix))
     return essential_matrix
+
+
+
 
 def linear_LS_triangulation(u1, P1, u2, P2):
 
@@ -277,6 +234,8 @@ def linear_LS_triangulation(u1, P1, u2, P2):
 
     return x.T, np.ones(len(u1), dtype=bool)
 
+
+
 def vizMatches(image1, image2, pixelsImg1, pixelsImg2, idx):
     '''
     Visualize the feature match between pair of images
@@ -306,8 +265,10 @@ def vizMatches(image1, image2, pixelsImg1, pixelsImg2, idx):
 
 
 
+
 if __name__ == '__main__':
-    value = '/home/srujan/PycharmProjects/visual_odometry/stereo/centre'
+
+    value = '/home/srujan/Downloads/MidAir/Kite_training/sunny/color_right/trajectory_0000/frames'
 
     # fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('./model')
     fx, fy, cx, cy, G_camera_image, LUT = ReadCameraModel.ReadCameraModel('/home/srujan/PycharmProjects/visual_odometry/model')
@@ -318,10 +279,15 @@ if __name__ == '__main__':
                 [0,fy,cy],
                 [0,0,1]])
 
+    print(k)
+    # print(hckh)
+
     image_list = []
 
-    filenames = [img for img in glob.glob("/home/srujan/PycharmProjects/visual_odometry/stereo/centre/*.png")]
+    filenames = [img for img in glob.glob("/home/srujan/Downloads/MidAir/Kite_training/sunny/color_right/trajectory_0000/frames/*.JPEG")]
     # filenames = [img for img in glob.glob("/home/srujan/PycharmProjects/visual_odometry/samples/*.png")]
+
+    # print(filenames)
 
     filenames.sort()
     for img in filenames:
@@ -329,36 +295,46 @@ if __name__ == '__main__':
 
     # image_list = [os.path.join(value, f) for f in os.listdir(value) if f.endswith('.png')]
 
+    # print(len(filenames))
+
     Homogeneous_matrix_new  = np.eye(4,4)
 
     Trajectories = []
 
     frame_count = 0
 
-    max_len = 1000
+    max_len = 2000
 
     # for q in range(25,len(image_list)-1):
-    for q in range(25,50):
+    for q in range(25,max_len):
+
 
         print('frame count before entering ',frame_count)
 
-        image1 = cv2.imread(image_list[q],0)
-        image2 = cv2.imread(image_list[q+1],0)
+        # image1 = cv2.imread(image_list[q],0)
+        # image2 = cv2.imread(image_list[q+1],0)
 
+        image1 = cv2.imread(image_list[q])
+        image2 = cv2.imread(image_list[q+1])
 
-        color_image1 = cv2.cvtColor(image1, cv2.COLOR_BayerGR2BGR)
+        # print(image1)
+
+        # color_image1 = cv2.cvtColor(image1, cv2.COLOR_BayerGR2BGR)
         # color_image1 = cv2.cvtColor(image1, cv2.COLOR_BayerGR2GRAY)
 
-        undistorted_image1 = UndistortImage.UndistortImage(color_image1, LUT)
-        color_image2 = cv2.cvtColor(image2, cv2.COLOR_BayerGR2BGR)
+        # undistorted_image1 = UndistortImage.UndistortImage(color_image1, LUT)
+        # color_image2 = cv2.cvtColor(image2, cv2.COLOR_BayerGR2BGR)
         # color_image2 = cv2.cvtColor(image2, cv2.COLOR_BayerGR2GRAY)
 
-        undistorted_image2 = UndistortImage.UndistortImage(color_image2, LUT)
+        # undistorted_image2 = UndistortImage.UndistortImage(color_image2, LUT)
         # cv2.imshow('undistorted', undistorted_image1)
         # cv2.waitKey(0)
 
-        gray1 = cv2.cvtColor(undistorted_image1, cv2.COLOR_BGR2GRAY)
-        gray2 = cv2.cvtColor(undistorted_image2, cv2.COLOR_BGR2GRAY)
+        # gray1 = cv2.cvtColor(undistorted_image1, cv2.COLOR_BGR2GRAY)
+        # gray2 = cv2.cvtColor(undistorted_image2, cv2.COLOR_BGR2GRAY)
+
+        gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
 
         equ1 = cv2.equalizeHist(gray1)
         img1_gray = cv2.GaussianBlur(equ1, (3, 3), 0)
@@ -366,77 +342,87 @@ if __name__ == '__main__':
         img2_gray = cv2.GaussianBlur(equ2, (3, 3), 0)
 
         # Apply SIFT feature detector
-        all_matches = sift_feat(undistorted_image1,undistorted_image2)
+        all_matches = sift_feat(image1,image2)
 
         ## Ransac:
-        inliers_,S_ = RANSAC(all_matches)
+        ULA = np.delete(all_matches[0], 2, 1)
+        VLA = np.delete(all_matches[1], 2, 1)
 
-        S_array = np.asarray(S_)
+        E, _ = cv2.findEssentialMat(ULA, VLA, cameraMatrix=k, method=cv2.RANSAC, prob=0.999, threshold=0.5)
 
-        img1_inliers = np.vstack((S_array[:,:,0][:,0], S_array[:,:,1][:,0])).T
-        img2_inliers = np.vstack((S_array[:,:,0][:,1], S_array[:,:,1][:,1])).T
-
-        # vizMatches(undistorted_image1,undistorted_image2,img1_inliers,img2_inliers,q)
-
-        ## Estimate Essential matrix
-        rand_points=random.sample(range(0,len(img1_inliers)),8)
-        x_i = list(itemgetter(*rand_points)(img1_inliers))
-        x_i_dash = list(itemgetter(*rand_points)(img2_inliers))
+        # inliers_,S_ = RANSAC(all_matches)
+        #
+        # S_array = np.asarray(S_)
+        #
+        # img1_inliers = np.vstack((S_array[:,:,0][:,0], S_array[:,:,1][:,0])).T
+        # img2_inliers = np.vstack((S_array[:,:,0][:,1], S_array[:,:,1][:,1])).T
+        #
+        # # vizMatches(undistorted_image1,undistorted_image2,img1_inliers,img2_inliers,q)
+        #
+        #
+        # # Estimate Essential matrix
+        # rand_points=random.sample(range(0,len(img1_inliers)),8)
+        # x_i = list(itemgetter(*rand_points)(img1_inliers))
+        # x_i_dash = list(itemgetter(*rand_points)(img2_inliers))
         # F_tilde = estimate_fundamental_matrix(x_i, x_i_dash)
+        #
+        # E = obtain_essential_matrix(F_tilde, k)
+        #
+        # U,D,Vh = np.linalg.svd(E)
+        # W=np.array([[0,-1,0],[1,0,0],[0,0,1]])
+        #
+        # C1=U[:,2]
+        # C2=-U[:,2]
+        # C3=U[:,2]
+        # C4=-U[:,2]
+        # C_list = [C1, C2, C3, C4]
+        #
+        # R1 = np.matmul(U, np.matmul(W, Vh))
+        # R2 = np.matmul(U, np.matmul(W, Vh))
+        # R3 = np.matmul(U, np.matmul(W.T, Vh))
+        # R4 = np.matmul(U, np.matmul(W.T, Vh))
+        # R_list = [R1, R2, R3, R4]
+        #
+        # for i in range(0, len(C_list)):
+        #     if det(R_list[i]) < 0:
+        #         C_list[i] = -C_list[i]
+        #
+        # correct_poses = []
+        #
+        # prev = 0
+        # for R,C in zip(R_list, C_list):
+        #
+        #
+        #     values = []
+        #     positive = 0
+        #
+        #     P1 = np.eye(3,4)
+        #     P2 = np.hstack((R,np.reshape((C.T), (3,1))))
+        #
+        #     x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
+        #
+        #     for i in range(0,len(img1_inliers)):
+        #
+        #         value = np.dot(np.reshape(R[:,2], (1,3)), (x_pts - C)[i])
+        #         # values.append(value)
+        #
+        #         if value >0:
+        #             positive+=1
+        # #     print('number of positives', positive)
+        # #     print('R', R)
+        # #     print('C', C)
+        #
+        #     if positive > prev:
+        #         correct_poses = [R,C]
+        #         prev = positive
 
-        F_tilde = estimate_Norm_fundamental_matrix(x_i, x_i_dash)
+        _, cur_R, cur_t, mask = cv2.recoverPose(E, ULA, VLA, cameraMatrix=k)
 
-        E = obtain_essential_matrix(F_tilde, k)
+        if np.linalg.det(cur_R)<0:
+            cur_R = -cur_R
+            cur_t = -cur_t
 
-        U,D,Vh = np.linalg.svd(E)
-        W=np.array([[0,-1,0],[1,0,0],[0,0,1]])
-
-        C1=U[:,2]
-        C2=-U[:,2]
-        C3=U[:,2]
-        C4=-U[:,2]
-        C_list = [C1, C2, C3, C4]
-
-        R1 = np.matmul(U, np.matmul(W, Vh))
-        R2 = np.matmul(U, np.matmul(W, Vh))
-        R3 = np.matmul(U, np.matmul(W.T, Vh))
-        R4 = np.matmul(U, np.matmul(W.T, Vh))
-        R_list = [R1, R2, R3, R4]
-
-        for i in range(0, len(C_list)):
-            if det(R_list[i]) < 0:
-                C_list[i] = -C_list[i]
-
-        correct_poses = []
-
-        prev = 0
-        for R,C in zip(R_list, C_list):
-
-
-            values = []
-            positive = 0
-
-            P1 = np.eye(3,4)
-            P2 = np.hstack((R,np.reshape((C.T), (3,1))))
-
-            # x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
-            # x_pts , ones_ = linear_LS_triangulation(img1_inliers, P1, img2_inliers, P2)
-            x_pts , ones_ = linear_LS_triangulation(all_matches[0][:,[0,1]], P1, all_matches[1][:,[0,1]], P2)
-
-            for i in range(0,len(img1_inliers)):
-
-                value = np.dot(np.reshape(R[:,2], (1,3)), (x_pts - C)[i])
-                # values.append(value)
-
-                if value >0:
-                    positive+=1
-        #     print('number of positives', positive)
-        #     print('R', R)
-        #     print('C', C)
-
-            if positive > prev:
-                correct_poses = [R,C]
-                prev = positive
+        correct_poses = [cur_R,cur_t]
 
         Obtained_homogeneous_matrix = np.eye(4,4)
         Obtained_homogeneous_matrix[0:3, 0:3] = correct_poses[0]
@@ -459,7 +445,7 @@ if __name__ == '__main__':
 
         print('frame count after exiting ',frame_count)
 
-    np.save('trajectories3.npy', Trajectories)
+    np.save('trajectories_builtin_drone_full.npy', Trajectories)
 
 
 
